@@ -108,5 +108,13 @@ class DatabaseHelper {
   Future<int> delete(int id) async {
     Database db = await instance.database;
     return await db.delete(tableTransactions, where: 'id = ?', whereArgs: [id]);
+  }// Menghitung urutan transaksi hari ini berdasarkan ID Kasir dan Tanggal
+  Future<int> getTodayTransactionCount(int employeeId, String datePrefix) async {
+    Database db = await instance.database;
+    final result = await db.rawQuery(
+      "SELECT COUNT(*) FROM $tableTransactions WHERE employee_id = ? AND date LIKE ?",
+      [employeeId, '$datePrefix%']
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 }

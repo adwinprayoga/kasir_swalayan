@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/database_helper.dart';
 
 class AddTransactionPage extends StatefulWidget {
   const AddTransactionPage({super.key});
@@ -14,54 +15,60 @@ class AddTransactionPage extends StatefulWidget {
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
   final _formKey = GlobalKey<FormState>();
-  final _receiptController = TextEditingController();
-  final _amountController = TextEditingController();
+  final _amountController = TextEditingController(); // _receiptController dihapus
 
   String _paymentMethod = 'Tunai';
   DateTime? _selectedDate;
 
   @override
   void dispose() {
-    _receiptController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
-  void _submitForm() {
+  // Diubah menjadi async untuk menunggu query database
+  void _submitForm() async {
     if (_formKey.currentState!.validate() && _selectedDate != null) {
       final amount = double.parse(_amountController.text);
-      final receipt = _receiptController.text.trim();
-
-      // Ambil ID kasir yang sedang login dari AuthProvider
       final currentEmployeeId = context.read<AuthProvider>().currentEmployee!.id!;
+
+      // 1. Ekstrak string tanggal (Contoh: "2026-10-28")
+      String datePrefix = _selectedDate!.toIso8601String().split('T')[0]; 
+      // 2. Hilangkan tanda strip untuk format struk (Contoh: "20261028")
+      String dateForReceipt = datePrefix.replaceAll('-', '');
+
+      // 3. Ambil jumlah transaksi hari itu dari SQLite dan buat urutan 3 digit
+      int count = await DatabaseHelper.instance.getTodayTransactionCount(currentEmployeeId, datePrefix);
+      String sequence = (count + 1).toString().padLeft(3, '0'); // "001", "002", dst.
+
+      // 4. Format Otomatis: EMP1-20261028-001
+      String autoReceiptNumber = "EMP$currentEmployeeId-$dateForReceipt-$sequence";
 
       StoreTransaction newTransaction;
       if (_paymentMethod == 'Tunai') {
         newTransaction = CashTransaction(
-          receiptNumber: receipt,
+          receiptNumber: autoReceiptNumber,
           totalAmount: amount,
           date: _selectedDate!,
           employeeId: currentEmployeeId,
         );
       } else {
         newTransaction = QrisTransaction(
-          receiptNumber: receipt,
+          receiptNumber: autoReceiptNumber,
           totalAmount: amount,
           date: _selectedDate!,
           employeeId: currentEmployeeId,
         );
       }
 
-      // Simpan transaksi melalui TransactionProvider
-      context.read<TransactionProvider>().addTransaction(newTransaction);
+      if (mounted) {
+        context.read<TransactionProvider>().addTransaction(newTransaction);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Struk $autoReceiptNumber berhasil disimpan!')),
+        );
+      }
 
-      // Tampilkan SnackBar feedback
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Struk berhasil disimpan!')),
-      );
-
-      // Reset Form setelah berhasil submit
-      _receiptController.clear();
+      // Reset form input
       _amountController.clear();
       setState(() {
         _selectedDate = null;
@@ -83,23 +90,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Field Nomor Struk
-            TextFormField(
-              controller: _receiptController,
-              decoration: const InputDecoration(
-                labelText: 'Nomor Struk',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.receipt),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'Nomor struk wajib diisi';
-                if (value.trim().length < 4) return 'Minimal 4 karakter';
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            
-            // Field Total Belanja
+            // Kolom Input Nomor Struk dihilangkan dari UI
             TextFormField(
               controller: _amountController,
               decoration: const InputDecoration(
@@ -117,7 +108,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ),
             const SizedBox(height: 16),
             
-            // Input Pilihan 1: Dropdown Metode Pembayaran
             DropdownButtonFormField<String>(
               value: _paymentMethod,
               decoration: const InputDecoration(
@@ -136,7 +126,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ),
             const SizedBox(height: 16),
             
-            // Input Pilihan 2: Date Picker
             ListTile(
               shape: RoundedRectangleBorder(
                 side: const BorderSide(color: Colors.grey),
@@ -162,11 +151,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ),
             const SizedBox(height: 24),
             
-            // Tombol Submit Form
             ElevatedButton.icon(
               onPressed: _submitForm,
               icon: const Icon(Icons.save),
-              label: const Text('Simpan Struk'),
+              label: const Text('Simpan Data (Auto No. Struk)'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
