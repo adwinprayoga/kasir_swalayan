@@ -2,15 +2,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/auth_provider.dart';
+import 'login_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Memantau perubahan data secara reaktif
+    // Memantau provider transaksi
     final provider = context.watch<TransactionProvider>();
     
+    // Mengambil data kasir yang sedang login (hanya read, tidak perlu watch terus menerus)
+    final authProvider = context.read<AuthProvider>();
+    final employeeName = authProvider.currentEmployee?.name ?? 'Kasir';
+
     // Kalkulasi total pendapatan
     double totalRevenue = 0;
     for (var tx in provider.transactions) {
@@ -18,9 +24,29 @@ class DashboardPage extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard Swalayan')),
+      appBar: AppBar(
+        title: Text('Dashboard - $employeeName'), // Menampilkan nama kasir aktif
+        actions: [
+          // Tombol Log Out / Ganti Akun
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Log Out',
+            onPressed: () {
+              // 1. Menghapus sesi login di AuthProvider
+              context.read<AuthProvider>().logout();
+              
+              // 2. Navigasi ke LoginPage & menghapus seluruh tumpukan halaman sebelumnya
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
+      ),
       body: provider.isLoading
-          ? const Center(child: CircularProgressIndicator()) // Handling UI saat loading
+          ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -47,7 +73,14 @@ class DashboardPage extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Card(
-                            child: Center(child: Text('Total Struk:\n${provider.transactions.length}', textAlign: TextAlign.center)),
+                            elevation: 2,
+                            child: Center(
+                              child: Text(
+                                'Total Struk:\n${provider.transactions.length}', 
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              )
+                            ),
                           ),
                         ),
                       ],

@@ -15,39 +15,36 @@ class AddTransactionPage extends StatefulWidget {
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController(); // _receiptController dihapus
+  final _itemController = TextEditingController(); // Controller nama barang
+  final _amountController = TextEditingController(); 
 
   String _paymentMethod = 'Tunai';
   DateTime? _selectedDate;
 
   @override
   void dispose() {
+    _itemController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
-  // Diubah menjadi async untuk menunggu query database
   void _submitForm() async {
     if (_formKey.currentState!.validate() && _selectedDate != null) {
+      final itemName = _itemController.text.trim();
       final amount = double.parse(_amountController.text);
       final currentEmployeeId = context.read<AuthProvider>().currentEmployee!.id!;
 
-      // 1. Ekstrak string tanggal (Contoh: "2026-10-28")
       String datePrefix = _selectedDate!.toIso8601String().split('T')[0]; 
-      // 2. Hilangkan tanda strip untuk format struk (Contoh: "20261028")
       String dateForReceipt = datePrefix.replaceAll('-', '');
-
-      // 3. Ambil jumlah transaksi hari itu dari SQLite dan buat urutan 3 digit
       int count = await DatabaseHelper.instance.getTodayTransactionCount(currentEmployeeId, datePrefix);
-      String sequence = (count + 1).toString().padLeft(3, '0'); // "001", "002", dst.
-
-      // 4. Format Otomatis: EMP1-20261028-001
+      String sequence = (count + 1).toString().padLeft(3, '0'); 
       String autoReceiptNumber = "EMP$currentEmployeeId-$dateForReceipt-$sequence";
 
       StoreTransaction newTransaction;
       if (_paymentMethod == 'Tunai') {
         newTransaction = CashTransaction(
           receiptNumber: autoReceiptNumber,
+          itemName: itemName,
           totalAmount: amount,
           date: _selectedDate!,
           employeeId: currentEmployeeId,
@@ -55,6 +52,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       } else {
         newTransaction = QrisTransaction(
           receiptNumber: autoReceiptNumber,
+          itemName: itemName,
           totalAmount: amount,
           date: _selectedDate!,
           employeeId: currentEmployeeId,
@@ -68,7 +66,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         );
       }
 
-      // Reset form input
+      _itemController.clear();
       _amountController.clear();
       setState(() {
         _selectedDate = null;
@@ -90,7 +88,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Kolom Input Nomor Struk dihilangkan dari UI
+            // Kolom Input Nama Barang Baru
+            TextFormField(
+              controller: _itemController,
+              decoration: const InputDecoration(
+                labelText: 'Nama Barang',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.shopping_cart),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) return 'Nama barang wajib diisi';
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            
             TextFormField(
               controller: _amountController,
               decoration: const InputDecoration(
@@ -154,7 +166,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             ElevatedButton.icon(
               onPressed: _submitForm,
               icon: const Icon(Icons.save),
-              label: const Text('Simpan Data (Auto No. Struk)'),
+              label: const Text('Simpan Data'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),

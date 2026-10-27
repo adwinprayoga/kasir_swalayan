@@ -5,7 +5,7 @@ import '../models/employee_model.dart';
 
 class DatabaseHelper {
   static const _databaseName = "KasirSwalayanDB.db";
-  static const _databaseVersion = 2; // Versi 2 untuk fitur login kasir
+  static const _databaseVersion = 3; // Naikkan ke versi 3
 
   static const tableTransactions = 'transactions';
   static const tableEmployees = 'employees';
@@ -32,7 +32,6 @@ class DatabaseHelper {
   }
 
   Future _onCreate(Database db, int version) async {
-    // Tabel Employees
     await db.execute('''
       CREATE TABLE $tableEmployees (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,11 +41,12 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabel Transactions dengan relasi employee_id
+    // Tambahan kolom item_name TEXT NOT NULL
     await db.execute('''
       CREATE TABLE $tableTransactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         receipt_number TEXT NOT NULL,
+        item_name TEXT NOT NULL, 
         total_amount REAL NOT NULL,
         date TEXT NOT NULL,
         payment_method TEXT NOT NULL,
@@ -54,50 +54,30 @@ class DatabaseHelper {
       )
     ''');
 
-    // Akun Kasir Default
-    await db.insert(tableEmployees, {
-      'name': 'Budi Kasir',
-      'username': 'kasir1',
-      'password': '123'
-    });
-    await db.insert(tableEmployees, {
-      'name': 'Siti Kasir',
-      'username': 'kasir2',
-      'password': '123'
-    });
+    await db.insert(tableEmployees, {'name': 'Budi Kasir', 'username': 'kasir1', 'password': '123'});
+    await db.insert(tableEmployees, {'name': 'Siti Kasir', 'username': 'kasir2', 'password': '123'});
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
+    if (oldVersion < 3) {
       await db.execute("DROP TABLE IF EXISTS $tableTransactions");
       await db.execute("DROP TABLE IF EXISTS $tableEmployees");
       await _onCreate(db, newVersion);
     }
   }
 
-  // Auth: Cek Login
   Future<Employee?> login(String username, String password) async {
     Database db = await instance.database;
     List<Map<String, dynamic>> maps = await db.query(
-      tableEmployees,
-      where: 'username = ? AND password = ?',
-      whereArgs: [username, password],
+      tableEmployees, where: 'username = ? AND password = ?', whereArgs: [username, password],
     );
-    if (maps.isNotEmpty) {
-      return Employee.fromMap(maps.first);
-    }
+    if (maps.isNotEmpty) return Employee.fromMap(maps.first);
     return null;
   }
 
-  // Query transaksi spesifik berdasarkan kasir
   Future<List<Map<String, dynamic>>> queryTransactionsByEmployee(int employeeId) async {
     Database db = await instance.database;
-    return await db.query(
-      tableTransactions,
-      where: 'employee_id = ?',
-      whereArgs: [employeeId],
-      orderBy: "date DESC",
-    );
+    return await db.query(tableTransactions, where: 'employee_id = ?', whereArgs: [employeeId], orderBy: "date DESC");
   }
 
   Future<int> insert(Map<String, dynamic> row) async {
@@ -108,7 +88,8 @@ class DatabaseHelper {
   Future<int> delete(int id) async {
     Database db = await instance.database;
     return await db.delete(tableTransactions, where: 'id = ?', whereArgs: [id]);
-  }// Menghitung urutan transaksi hari ini berdasarkan ID Kasir dan Tanggal
+  }
+
   Future<int> getTodayTransactionCount(int employeeId, String datePrefix) async {
     Database db = await instance.database;
     final result = await db.rawQuery(

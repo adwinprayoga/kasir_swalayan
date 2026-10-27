@@ -19,20 +19,20 @@ class DetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Header: ${transaction.getReceiptHeader()}',
+              transaction.getReceiptHeader(), // Akan menampilkan: Nama Barang (Tunai/QRIS: Nomor)
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            Text('Nominal: Rp ${transaction.totalAmount.toStringAsFixed(0)}'),
-            Text('Tanggal: ${transaction.date.toString().split(' ')[0]}'),
-            Text('Metode: ${transaction.getPaymentMethod()}'),
+            Text('Nama Barang: ${transaction.itemName}', style: const TextStyle(fontSize: 16)),
+            Text('Nominal: Rp ${transaction.totalAmount.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16)),
+            Text('Tanggal: ${transaction.date.toString().split(' ')[0]}', style: const TextStyle(fontSize: 16)),
+            Text('Metode: ${transaction.getPaymentMethod()}', style: const TextStyle(fontSize: 16)),
             const Spacer(),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () {
-                  // Mengirim 2 argumen: transaction.id dan transaction.employeeId
                   context.read<TransactionProvider>().deleteTransaction(
                         transaction.id!,
                         transaction.employeeId,

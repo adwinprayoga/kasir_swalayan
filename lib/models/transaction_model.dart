@@ -4,17 +4,19 @@
 abstract class StoreTransaction {
   // Encapsulation: Private attributes
   int? _id;
-  String _receiptNumber; // Nomor struk belanja
+  String _receiptNumber; // Nomor struk belanja otomatis
+  String _itemName;      // Nama barang
   double _totalAmount;   // Total nominal belanja
   DateTime _date;        // Tanggal transaksi
   int _employeeId;       // ID Kasir yang menangani transaksi
 
   // Constructor
-  StoreTransaction(this._id, this._receiptNumber, this._totalAmount, this._date, this._employeeId);
+  StoreTransaction(this._id, this._receiptNumber, this._itemName, this._totalAmount, this._date, this._employeeId);
 
   // Getter untuk mengakses private attributes dengan aman
   int? get id => _id;
   String get receiptNumber => _receiptNumber;
+  String get itemName => _itemName;
   double get totalAmount => _totalAmount;
   DateTime get date => _date;
   int get employeeId => _employeeId;
@@ -28,6 +30,7 @@ abstract class StoreTransaction {
     return {
       'id': _id,
       'receipt_number': _receiptNumber,
+      'item_name': _itemName,
       'total_amount': _totalAmount,
       'date': _date.toIso8601String(),
       'payment_method': getPaymentMethod(),
@@ -41,17 +44,18 @@ class CashTransaction extends StoreTransaction {
   CashTransaction({
     int? id,
     required String receiptNumber,
+    required String itemName,
     required double totalAmount,
     required DateTime date,
     required int employeeId,
-  }) : super(id, receiptNumber, totalAmount, date, employeeId);
+  }) : super(id, receiptNumber, itemName, totalAmount, date, employeeId);
 
   @override
   String getPaymentMethod() => 'Tunai';
 
   @override
   String getReceiptHeader() {
-    return "Struk Tunai: $receiptNumber"; 
+    return "$itemName (Tunai: $receiptNumber)"; 
   }
 }
 
@@ -60,16 +64,17 @@ class QrisTransaction extends StoreTransaction {
   QrisTransaction({
     int? id,
     required String receiptNumber,
+    required String itemName,
     required double totalAmount,
     required DateTime date,
     required int employeeId,
-  }) : super(id, receiptNumber, totalAmount, date, employeeId);
+  }) : super(id, receiptNumber, itemName, totalAmount, date, employeeId);
 
   @override
   String getPaymentMethod() => 'QRIS';
 
   @override
   String getReceiptHeader() {
-    return "Struk Digital (QRIS): $receiptNumber"; 
+    return "$itemName (QRIS: $receiptNumber)"; 
   }
 }

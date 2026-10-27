@@ -7,11 +7,9 @@ class TransactionProvider extends ChangeNotifier {
   List<StoreTransaction> _transactions = [];
   bool _isLoading = false;
 
-  // Getter
   List<StoreTransaction> get transactions => _transactions;
   bool get isLoading => _isLoading;
 
-  // Memuat transaksi khusus milik pegawai yang sedang login
   Future<void> fetchTransactionsByEmployee(int employeeId) async {
     _isLoading = true;
     notifyListeners();
@@ -23,17 +21,19 @@ class TransactionProvider extends ChangeNotifier {
         return CashTransaction(
           id: item['id'],
           receiptNumber: item['receipt_number'],
+          itemName: item['item_name'], // Tambahan pembacaan SQLite
           totalAmount: item['total_amount'],
           date: DateTime.parse(item['date']),
-          employeeId: item['employee_id'], // Parameter wajib yang sebelumnya kurang
+          employeeId: item['employee_id'],
         );
       } else {
         return QrisTransaction(
           id: item['id'],
           receiptNumber: item['receipt_number'],
+          itemName: item['item_name'], // Tambahan pembacaan SQLite
           totalAmount: item['total_amount'],
           date: DateTime.parse(item['date']),
-          employeeId: item['employee_id'], // Parameter wajib yang sebelumnya kurang
+          employeeId: item['employee_id'],
         );
       }
     }).toList();
@@ -42,13 +42,11 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Menambah transaksi baru
   Future<void> addTransaction(StoreTransaction transaction) async {
     await DatabaseHelper.instance.insert(transaction.toMap());
     await fetchTransactionsByEmployee(transaction.employeeId);
   }
 
-  // Menghapus transaksi
   Future<void> deleteTransaction(int id, int employeeId) async {
     await DatabaseHelper.instance.delete(id);
     await fetchTransactionsByEmployee(employeeId);
